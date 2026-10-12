@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Diagrammi di Bode</title>
+<style>
+:root{--bg:#f7f7f5;--card:#fff;--fg:#1c1c1a;--mut:#6b6b66;--bd:#dcdcd6;--grid:#e6e6e0;--ex:#1f6feb;--as:#e5484d;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161615;--card:#212120;--fg:#ececea;--mut:#9a9a94;--bd:#38383500;--bd:#383835;--grid:#2e2e2b;--ex:#58a6ff;--as:#ff7b72}}
+:root[data-theme="dark"]{--bg:#161615;--card:#212120;--fg:#ececea;--mut:#9a9a94;--bd:#383835;--grid:#2e2e2b;--ex:#58a6ff;--as:#ff7b72}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:980px;margin:0 auto;padding:16px}
+h1{font-size:1.3rem;margin:0 0 4px}p.s{color:var(--mut);margin:0 0 14px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:14px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:8px}
+label{display:flex;align-items:center;gap:6px;color:var(--mut)}
+input,select,button{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:6px 8px}
+input[type=number]{width:90px}button{cursor:pointer}button.p{background:var(--ex);color:#fff;border-color:var(--ex)}
+.f{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--grid)}
+.f .t{min-width:130px}
+#tf{font-family:ui-monospace,Menlo,monospace;overflow-x:auto;padding:8px 0;font-size:.95rem}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:700px){.cols{grid-template-columns:1fr}}
+.fr{display:flex;align-items:center;gap:10px;font-size:1.05rem}.fq{display:inline-flex;flex-direction:column;align-items:center}.fq .n{border-bottom:2px solid var(--fg);padding:0 8px 4px}.fq .d{padding:4px 8px 0}
+.tg{opacity:.45;color:var(--fg)}.tg.on{opacity:1;border-color:var(--fg)}.tg i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:6px}
+.ch{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.cw.big{position:fixed;inset:0;z-index:10;background:var(--card);padding:calc(env(safe-area-inset-top,0px) + 12px) 12px calc(env(safe-area-inset-bottom,0px) + 12px);display:flex;flex-direction:column;margin:0!important}
+.cw.big canvas{flex:1;min-height:0;height:0}
+canvas{width:100%;height:300px;display:block}
+.lg{display:flex;gap:16px;flex-wrap:wrap;color:var(--mut);font-size:.9rem;margin-bottom:6px}
+.lg i{display:inline-block;width:22px;height:3px;vertical-align:middle;margin-right:6px}
+</style></head><body><main>
+<h1>Diagrammi di Bode</h1>
+<p class="s">Inserisci G(s) in forma di Bode: ottieni il diagramma asintotico e quello reale (modulo e fase).</p>
+
+<div class="card">
+<div class="row">
+<label>K statico <input id="K" type="number" step="any" value="10"></label>
+<label>h (poli in 0; negativo = zeri) <input id="h" type="number" step="1" value="1"></label>
+</div>
+<div id="tf"></div>
+<div class="cols">
+<div><b>Numeratore</b> <span style="color:var(--mut)">(zeri)</span><div id="fn"></div><div class="row" style="margin-top:8px"><select id="nn"><option value="zr">Zero reale (1+τs)</option><option value="zc">Zeri complessi (1+2ζs/ωn+s²/ωn²)</option></select><button class="p" data-add="n">+ Aggiungi</button></div></div>
+<div><b>Denominatore</b> <span style="color:var(--mut)">(poli)</span><div id="fd"></div><div class="row" style="margin-top:8px"><select id="nd"><option value="pr">Polo reale (1+τs)</option><option value="pc">Poli complessi (1+2ζs/ωn+s²/ωn²)</option></select><button class="p" data-add="d">+ Aggiungi</button></div></div>
+</div>
+<div class="row" style="margin-top:10px"><button id="ex">Esempio</button></div>
+</div>
+
+<div class="card">
+<div class="lg"><span>Mostra:</span><button class="tg on" id="tr"><i style="background:var(--ex)"></i>Reale</button><button class="tg on" id="ta"><i style="background:var(--as)"></i>Asintotico</button></div>
+<div class="cw"><div class="ch"><b>Modulo</b><button data-big>⤢ Ingrandisci</button></div><canvas id="cm"></canvas></div>
+<div class="cw" style="margin-top:10px"><div class="ch"><b>Fase</b><button data-big>⤢ Ingrandisci</button></div><canvas id="cp"></canvas></div>
+</div>
+</main>
+<script>
+const NAMES={zr:'Zero reale',pr:'Polo reale',zc:'Zeri complessi',pc:'Poli complessi'};
+let F=[{t:'zr',a:0.1,b:0.7},{t:'pr',a:1,b:0.7},{t:'pr',a:0.01,b:0.7}];
+const $=id=>document.getElementById(id);
+const sg=t=>t[0]==='z'?1:-1, cx=t=>t[1]==='c';
+
+function renderList(){
+ const R=side=>F.map((f,i)=>sg(f.t)!==side?'':`<div class="f"><span class="t">${NAMES[f.t]}</span>
+ <label>${cx(f.t)?'ωn':'τ'} <input type="number" step="any" data-i="${i}" data-k="a" value="${f.a}"></label>
+ ${cx(f.t)?`<label>ζ <input type="number" step="any" data-i="${i}" data-k="b" value="${f.b}"></label>`:`<span style="color:var(--mut)">ω = ${fmt(1/Math.abs(f.a||1e-9))} rad/s</span>`}
+ <button data-del="${i}">✕</button></div>`).join('');
+ $('fn').innerHTML=R(1);$('fd').innerHTML=R(-1);
+}
+const fmt=x=>+x.toPrecision(3);
+function tfText(){
+ const K=+$('K').value,h=+$('h').value;
+ let num=[],den=[];
+ F.forEach(f=>{const s=cx(f.t)?`(1+${fmt(2*f.b/f.a)}s+${fmt(1/(f.a*f.a))}s²)`:`(1+${fmt(f.a)}s)`;(sg(f.t)>0?num:den).push(s)});
+ if(h<0)num.push(`s^${-h}`); if(h>0)den.push(h===1?'s':`s^${h}`);
+ $('tf').innerHTML=`<div class="fr"><span>G(s) =</span><span>${K}</span><span class="fq"><span class="n">${num.join(' ')||'1'}</span><span class="d">${den.join(' ')||'1'}</span></span></div>`;
+}
+function corners(f){return cx(f.t)?Math.abs(f.a):1/Math.abs(f.a)}
+function model(w){
+ const K=+$('K').value||1e-12,h=+$('h').value||0,L=Math.log10(w);
+ let me=20*Math.log10(Math.abs(K))-20*h*L, ma=me, pe=-90*h+(K<0?-180:0), pa=pe;
+ F.forEach(f=>{
+  const s=sg(f.t),wc=corners(f),a=Math.abs(f.a)||1e-9, d=Math.log10(w/wc);
+  if(cx(f.t)){
+   const z=Math.abs(f.b),re=1-(w/wc)**2,im=2*z*w/wc;
+   me+=s*10*Math.log10(re*re+im*im); pe+=s*Math.atan2(im,re)*180/Math.PI;
+   ma+=s*40*Math.max(0,d); pa+=s*180*(d>=0?1:0);
+  }else{
+   me+=s*10*Math.log10(1+(w*a)**2); pe+=s*Math.atan(w*a)*180/Math.PI;
+   ma+=s*20*Math.max(0,d); pa+=s*90*Math.min(1,Math.max(0,(d+1)/2));
+  }
+ });
+ return {me,ma,pe,pa};
+}
+function css(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
+function plot(cv,key,unit,step,lo,hi,N,pts){
+ const dpr=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
+ cv.width=W*dpr;cv.height=H*dpr;const c=cv.getContext('2d');c.scale(dpr,dpr);
+ const m={l:52,r:12,t:12,b:26},pw=W-m.l-m.r,ph=H-m.t-m.b;
+ const all=pts.flatMap(p=>[p[key[0]],p[key[1]]]);
+ let y0=Math.floor(Math.min(...all)/step)*step-step*0,y1=Math.ceil(Math.max(...all)/step)*step;
+ if(y1-y0<step*2){y1+=step;}
+ const X=l=>m.l+(l-lo)/(hi-lo)*pw,Y=v=>m.t+(1-(v-y0)/(y1-y0))*ph;
+ c.font='11px system-ui';c.fillStyle=css('--mut');c.strokeStyle=css('--grid');c.lineWidth=1;
+ const every=Math.max(1,Math.round((y1-y0)/step/8));
+ for(let v=y0,k=0;v<=y1;v+=step,k++){if(k%every)continue;c.beginPath();c.moveTo(m.l,Y(v));c.lineTo(W-m.r,Y(v));c.stroke();c.textAlign='right';c.fillText(v,m.l-6,Y(v)+4)}
+ for(let d=lo;d<=hi;d++){for(let k=1;k<10;k++){const l=d+Math.log10(k);if(l>hi)break;c.strokeStyle=css('--grid');c.globalAlpha=k===1?1:.45;c.beginPath();c.moveTo(X(l),m.t);c.lineTo(X(l),m.t+ph);c.stroke()}
+  c.globalAlpha=1;c.textAlign='center';c.fillText('10'+sup(d),X(d),H-8)}
+ c.strokeStyle=css('--fg');c.globalAlpha=.5;if(y0<0&&y1>0){c.beginPath();c.moveTo(m.l,Y(0));c.lineTo(W-m.r,Y(0));c.stroke()}c.globalAlpha=1;
+ c.save();c.translate(12,m.t+ph/2);c.rotate(-Math.PI/2);c.textAlign='center';c.fillText(unit,0,0);c.restore();
+ [[key[1],'--as',2,showA],[key[0],'--ex',2.2,showE]].forEach(([k,col,lw,on])=>{if(!on)return;
+  c.strokeStyle=css(col);c.lineWidth=lw;c.beginPath();
+  pts.forEach((p,i)=>{const x=X(p.l),y=Y(p[k]);i?c.lineTo(x,y):c.moveTo(x,y)});c.stroke()});
+}
+const sup=d=>String(d).replace(/./g,ch=>({'-':'⁻','0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'}[ch]));
+function draw(){
+ tfText();
+ const cs=F.map(corners).filter(x=>isFinite(x)&&x>0).concat([1]);
+ const lo=Math.floor(Math.log10(Math.min(...cs)))-1,hi=Math.ceil(Math.log10(Math.max(...cs)))+1;
+ const N=600,pts=[];
+ for(let i=0;i<=N;i++){const l=lo+(hi-lo)*i/N;pts.push({l,...model(10**l)})}
+ plot($('cm'),['me','ma'],'Modulo [dB]',20,lo,hi,N,pts);
+ const rg=pts.flatMap(p=>[p.pe,p.pa]),span=Math.max(...rg)-Math.min(...rg);
+ plot($('cp'),['pe','pa'],'Fase [°]',span>540?90:45,lo,hi,N,pts);
+}
+const FL={addEventListener:(t,fn)=>['fn','fd'].forEach(i=>$(i).addEventListener(t,fn))};
+FL.addEventListener('input',e=>{const t=e.target;if(t.dataset.i===undefined)return;F[t.dataset.i][t.dataset.k]=parseFloat(t.value)||0;draw()});
+FL.addEventListener('change',renderList);
+FL.addEventListener('click',e=>{const d=e.target.dataset.del;if(d!==undefined){F.splice(d,1);renderList();draw()}});
+document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{F.push({t:$(b.dataset.add==='n'?'nn':'nd').value,a:1,b:0.5});renderList();draw()});
+$('ex').onclick=()=>{$('K').value=10;$('h').value=1;F=[{t:'zr',a:0.1,b:.7},{t:'pr',a:1,b:.7},{t:'pr',a:0.01,b:.7}];renderList();draw()};
+['K','h'].forEach(i=>$(i).addEventListener('input',draw));
+addEventListener('resize',draw);
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change',draw);
+let showE=true,showA=true;
+function sync(){$('tr').classList.toggle('on',showE);$('ta').classList.toggle('on',showA);draw()}
+$('tr').onclick=()=>{showE=!showE;if(!showE&&!showA)showA=true;sync()};
+$('ta').onclick=()=>{showA=!showA;if(!showE&&!showA)showE=true;sync()};
+document.querySelectorAll('[data-big]').forEach(b=>b.onclick=()=>{const w=b.closest('.cw');const on=w.classList.toggle('big');b.textContent=on?'✕ Chiudi':'⤢ Ingrandisci';document.body.style.overflow=on?'hidden':'';draw()});
+addEventListener('keydown',e=>{if(e.key==='Escape'){const w=document.querySelector('.cw.big');if(w)w.querySelector('[data-big]').click()}});
+renderList();draw();
+</script></body></html>
